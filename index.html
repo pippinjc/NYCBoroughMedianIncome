@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NYC Boroughs Median Income</title>
+<meta charset=utf-8 />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+  #map {
+    position:absolute;
+    top:0;
+    bottom:0;
+    width: 99.7%;
+    height: 99.9%;
+    object-fit: fill;
+   }
+.legend {
+  background: white;
+  padding: 20px;
+  line-height: 1.2em;
+  color: #333;
+  font: 14px/16px "Helvetica Neue", Arial, Helvetica, sans-serif;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+}
+.legend-canvas {
+  display: block;
+  width: 140px;
+  height: 12px;
+  margin-bottom: 6px;
+}
+.legend-labels {
+  font-size: 12px;
+  color: #444;
+}
+.custom-tooltip {
+    background-color: white;
+    color: #333;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center; /* center text */
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+		section {
+			position: absolute;
+			bottom: 0;
+			left: 10px;
+			width: 280px;
+			margin: 20px auto;
+			padding: 0 15px;
+			background: rgba(256, 256, 256);
+			border: 1px solid grey;
+			border-radius: 3px;
+			z-index: 800;
+		}
+
+		p {
+			font-size: 1em;
+			line-height: 1.5em;
+		}
+    	h1 {
+			position: absolute;
+			margin-top: 10;
+			top: 10px;
+			left: 50px;
+			font-size: 2em;
+			font-family: "Georgia", serif;
+			letter-spacing: .04em;
+			padding: 10px 15px;
+			background: rgba(256, 256, 256);
+			border: 1px solid grey;
+			border-radius: 3px;
+			z-index: 800;
+		}
+    </style>
+</head>
+
+</html>
+<body>
+  <h1>NYC Boroughs Median Income Map</h1>
+  <section>
+    <h2>About this map.</h2>
+<p>This map depicts the median income by borough in NYC. Hover over the boroughs to a tooltip appear with median income statistics aswell as the name of the borough. Clicking upon the polygon of the boroughs will bring them into focus.</p>
+  </section>
+    <div id="map"></div>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
+
+
+<script>
+const MIN_INCOME = 45000;
+    const MAX_INCOME = 105000;
+
+
+    var colorScale = chroma.scale(['#e0f3db','#a8ddb5','#43a2ca']).domain([MIN_INCOME, MAX_INCOME]).mode('lch');
+
+
+
+    function getColor(d) {
+        if (d === undefined || d === null) {
+            return '#ccc';
+        }
+
+        const clampedValue = Math.max(MIN_INCOME, Math.min(MAX_INCOME, d));
+        return colorScale(clampedValue).hex();
+    };
+
+function style(feature) {
+                
+return {                    
+weight: 2,                    
+opacity: 1,                    
+color: 'white',                    
+dashArray: '2',                    
+fillOpacity: 0.8,                    
+fillColor: getColor(feature.properties.medinc)                
+};            
+};
+
+
+
+    var map = L.map('map',{
+        center: [40.7, -74.0],
+        zoom: 10.5
+    });
+var Stadia_StamenTonerLite = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}', {
+	minZoom: 0,
+	maxZoom: 20,
+	attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	ext: 'png'
+}).addTo(map);
+
+
+  function highlightFeature(e) {
+    layer = e.target;
+    layer.setStyle({
+      weight: 5,
+      color: '#3b3b3b',
+      fillColor: '#FFA500',
+      fillOpacity: 0.5
+    });
+    layer.bringToFront();
+  }
+
+  function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+  }
+
+  function onEachFeature(feature, layer) {
+    layer.on({
+      mouseover: highlightFeature,
+      mouseout: resetHighlight
+    });
+  };
+  function zoomToFeature(e) {                
+map.fitBounds(e.target.getBounds());            
+};
+
+
+
+function zoomToFeature(e) {                
+map.fitBounds(e.target.getBounds());            
+}
+
+function onEachFeature(feature, layer) {
+    if (feature.properties && feature.properties.medinc != null) {
+        layer.bindTooltip(
+            `<h2>${feature.properties.BoroName}</h2> <p>Median Income = $${feature.properties.medinc.toLocaleString()}</p>`,
+            {
+                direction: 'center',   
+                permanent: false,      
+                className: 'custom-tooltip'
+            }
+        );
+    }
+
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+}
+
+geojson = L.geoJson.ajax("assets/nycmedinc.geojson", {
+  style: style,
+  onEachFeature: onEachFeature,
+}).addTo(map);
+
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function (map) {
+  var div = L.DomUtil.create('div', 'info legend'),
+      legendCanvas = L.DomUtil.create('canvas', 'legend-canvas', div),
+      min = MIN_INCOME,
+      max = MAX_INCOME;
+
+  var ctx = legendCanvas.getContext('2d');
+  var width = 250; var height = 30;
+  legendCanvas.width = width;
+  legendCanvas.height = height;
+
+  var gradient = ctx.createLinearGradient(0, 0, width, 0);
+  for (let i = 0; i <= 1; i += 0.01) {
+    gradient.addColorStop(i, colorScale(min + i * (max - min)));
+  }
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  var legendLabels = `
+    <div class="legend-labels">
+      <span>${min.toLocaleString()}</span>
+      <span style="float:right;">${max.toLocaleString()}</span>
+    </div>
+    <div style="font-weight:bold; margin-top:4px;">Median Income ($)</div>
+  `;
+
+  div.innerHTML += legendLabels;
+  div.insertBefore(legendCanvas, div.firstChild);
+
+  return div;
+};
+
+
+
+legend.addTo(map);
+
+
+map.attributionControl.addAttribution('Income Data &copy; <a href="https://data.cccnewyork.org/data/table/66/median-incomes#66/107/131/a/"> CCC New York & US Census Bureau</a> | This map is made by Chandler Pippin');
+
+</script>
+
+</body>
